@@ -90,16 +90,7 @@ class TTPacket:
     def __str__(self):
         msg = 'TT %s|%s' % (hex(self.type), format_bytes(self.header))
         if self.type == TYPE_FRAMES and self.header != FRAMES_ACK:  # b8 is VIO img ok response
-            int1, datalen, counter, int2 = (b2i(self.payload[0:2]), b2i(self.payload[2:6]),
-                                            b2i(self.payload[6:10]), b2i(self.payload[10:14]))
-
-            msg += '/%d' % b2i(self.header[1:])
-
-            msg += ': %s +PNG (%d)' % (
-                (int1, datalen, counter, int2),
-                len(self.payload) - 14)
-
-            msg += 'x=%d' % (len(self.payload) - 14 - b2i(self.header[1:]))
+            msg += ': ' + format_bytes(self.payload[:14]) + 'PNG'
         else:
             msg += ': ' + format_bytes(self.payload)
 

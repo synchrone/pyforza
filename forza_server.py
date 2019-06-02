@@ -16,7 +16,7 @@ def create_server():
     server_sock.bind(("", bt.PORT_ANY))
     server_sock.listen(1)
     channel = server_sock.getsockname()[1]
-    logger.debug('Listening on channel %d' % channel)
+    #logger.debug('Listening on channel %d' % channel)
 
     bt.advertise_service(
         server_sock, forza.NAME,
@@ -27,18 +27,18 @@ def create_server():
 
 
 def calculate_header(imglen):
-    a = floor(imglen / 255) - 1
-    return imglen - 70 - (a * 255)
+    a = imglen - 242
+    n1 = a % 256
+    n2 = (a - n1) / 256 * 255
+    return imglen - 70 - n2
 
 
-def image_packet(image, counter=0, int1=1, int2=0):
-    with open('img/%s.png' % image, 'rb') as img:
-        imgdata = i2b(counter, 4) + i2b(int2, 4) + img.read()
-        payload = i2b(int1) + i2b(len(imgdata), 4) + imgdata
+def image_packet(image, header_value, counter=0, int1=1, int2=0):
+    payload = i2b(int1) + i2b(len(image) + 8, 4) + \
+              i2b(counter, 4) + i2b(int2, 4) + image
 
-        header = b"\x00"+i2b(calculate_header(len(imgdata) - 8), 2)
-        p = TTPacket(type=forza.TYPE_FRAMES, header=header, payload=payload)
-    return p
+    header = b"\x00"+i2b(header_value, 2)
+    return TTPacket(type=forza.TYPE_FRAMES, header=header, payload=payload)
 
 
 class ForzaServer:
@@ -69,11 +69,11 @@ class ForzaServer:
 
     def listen(self):
         server = create_server()
-        logger.info("Forza Server started")
+        #logger.info("Forza Server started")
 
         while True:
             self.client_sock, client_info = server.accept()
-            logger.info("Accepted connection from VIO %s (%d)" % tuple(client_info))
+            #logger.info("Accepted connection from VIO %s (%d)" % tuple(client_info))
 
             try:
                 while True:
@@ -81,21 +81,19 @@ class ForzaServer:
                     if len(data) > 0:
                         self.handle_packet(data)
             except bt.BluetoothError as e:
-                if e.args[0] == 104:
+                if 'Connection reset by peer' in e.args[0]:
                     logger.warning('Connection reset by VIO')
-                    break  # connection reset by peer, loop to accept again
+                    self.on_reset()
             finally:
                 self.client_sock and self.client_sock.close()
 
     def handle_packet(self, data):
-        logger.debug('.')
-
         if data[3:5] != b"TT":
             print('VIO: ' + format_bytes(data))
 
         if data == forza.HELLO:
             self._send(forza.FZA_HELLO)
-            logger.info('VIO HELLO -> FZA')
+            #logger.info('VIO HELLO -> FZA')
 
         elif data == forza.INFO[-1]:
             self._send(forza.FZA_START_TT)
@@ -103,10 +101,11 @@ class ForzaServer:
             # self._send(TTPacket(b"\x00\x00\xab", b"\x00\x01\x02"))
             self._send(TTPacket(b"\x00\x00\xaa", b"\x00\x0f"))  # app ready
             self._send(TTPacket(b"\x00\x00\xab", b"\x00\x01\x03"))  # app stage B-013
-            logger.info('VIO INFO -> INIT')
+            #logger.info('VIO INFO -> INIT')
 
         elif data == forza.START_TT_OK:
-            logger.info('VIO START TT OK')
+            pass
+            #logger.info('VIO START TT OK')
 
         elif data[3:5] == b"TT":
             packet = TTPacket.from_bytes(data)
@@ -133,9 +132,14 @@ class ForzaServer:
 
         if self.c_status >= 3:
             img = random.choice(['splash1', 'splash2'])
-            p = image_packet(img, self.sent_counter)
-            self._send(p)
-            self.sent_counter += 1
+            with open('img/%s.png' % img, 'rb') as img:
+                imgdata = img.read()
+                p = image_packet(imgdata, calculate_header(len(imgdata)), self.sent_counter)
+                self._send(p)
+                self.sent_counter += 1
+
+    def on_reset(self):
+        pass
 
 
 if __name__ == '__main__':

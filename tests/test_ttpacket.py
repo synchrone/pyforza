@@ -47,4 +47,4 @@ def test_img(img_packet):
 
 def test_ttframes():
     payload = b"\x00\x0b\x00\x00\x00\x00\x00\x00\x33\x00\x1b\x00\x12"
-    p = TTPacket(calculate_header())
+    p = TTPacket(payload, calculate_header(len(payload)))
