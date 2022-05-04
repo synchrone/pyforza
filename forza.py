@@ -25,8 +25,12 @@ TYPE_TOUCH = 1
 TYPE_HEARTBEAT = 2
 TYPE_FRAMES = 3
 
+# headers types:
+HEARTBEAT_TIME = b"\x00\x00\xd4"  # short + zeros + long
 FRAMES_ACK = b"\x00\x00\xb8"
-
+INIT_BRIGHTNESS = b"\x00\x00\xab"  # payload is 0x00, 0x0e, 0x0a - 0x55
+INIT_BATTERY = b"\x00\x00\xad"  # payload is {0x00, byte, percentage: byte, 0x04, \x00 - \x01 for charging}
+INIT_BATTERY_REQ = b"\x00\x00\xaa"  # payload is \x00\x0d - request battery status
 
 def format_bytes(data):
     return ''.join('\\x{:02x}'.format(x) for x in data)

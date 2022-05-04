@@ -135,24 +135,18 @@ class ForzaProxy(RfcommProxy):
             p = TTPacket.parse(data)
             if p.bytes_to_read > 0:
                 self._in_packet[dir] = p
-            else:
-                pass
-                #print(format_dir(dir) + str(p))
+                return
+            elif p.type == 0:
+                print(format_dir(dir) + str(p))
 
         elif chunked:
             chunked.hydrate(data)
-
             if chunked.bytes_to_read == 0:
-                print(format_dir(dir) + str(chunked))
-
-                if chunked.type == forza.TYPE_FRAMES and chunked.header != forza.FRAMES_ACK:
-                    pass
-                    #print(format_dir(dir) + '^^^' + forza.format_bytes(bytes(chunked)))
-
                 self._in_packet[dir] = None
+                if chunked.type != 3:
+                    print(format_dir(dir) + str(chunked))
         else:
-            pass
-            #print(format_dir(dir) + forza.format_bytes(data))
+            print(format_dir(dir) + forza.format_bytes(data))
 
 
 if __name__ == '__main__':
